@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Generator</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    .app {
+      max-width: 760px;
+      margin: 32px auto;
+      padding: 24px;
+      background: #1f2937;
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    label,
+    .field-label {
+      font-weight: 600;
+    }
+
+    .checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: #374151;
+      border-radius: 10px;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border: 1px solid #4b5563;
+      border-radius: 10px;
+      background: #111827;
+      color: #f9fafb;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .length-row,
+    .button-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    .length-row input[type="number"] {
+      width: 120px;
+    }
+
+    button {
+      padding: 12px 16px;
+      border: 0;
+      border-radius: 10px;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button.secondary {
+      background: #4b5563;
+    }
+
+    .message {
+      min-height: 1.25rem;
+      color: #93c5fd;
+      font-size: 0.95rem;
+    }
+
+    #alphabet {
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Password Generator</h1>
+    <div class="grid">
+      <div>
+        <div class="field-label">Character sets</div>
+        <div class="options">
+          <label class="checkbox"><input id="uppercase" type="checkbox" checked> Uppercase</label>
+          <label class="checkbox"><input id="lowercase" type="checkbox" checked> Lowercase</label>
+          <label class="checkbox"><input id="numbers" type="checkbox" checked> Numbers</label>
+          <label class="checkbox"><input id="symbols" type="checkbox"> Symbols</label>
+        </div>
+      </div>
+
+      <div>
+        <label for="alphabet">Alphabet</label>
+        <input id="alphabet" name="alphabet" type="text">
+      </div>
+
+      <div>
+        <label for="lengthSlider">Password length</label>
+        <div class="length-row">
+          <input id="lengthSlider" type="range" min="1" max="50" value="16">
+          <input id="lengthInput" type="number" min="1" value="16" inputmode="numeric">
+        </div>
+      </div>
+
+      <div>
+        <label for="password">Generated password</label>
+        <input id="password" type="text" readonly>
+      </div>
+
+      <div class="button-row">
+        <button id="regenerate" type="button">Regenerate</button>
+        <button id="copy" class="secondary" type="button">Copy to clipboard</button>
+      </div>
+
+      <div id="message" class="message" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var uppercase = document.getElementById("uppercase");
+      var lowercase = document.getElementById("lowercase");
+      var numbers = document.getElementById("numbers");
+      var symbols = document.getElementById("symbols");
+      var lengthSlider = document.getElementById("lengthSlider");
+      var lengthInput = document.getElementById("lengthInput");
+      var alphabetInput = document.getElementById("alphabet");
+      var passwordInput = document.getElementById("password");
+      var regenerateButton = document.getElementById("regenerate");
+      var copyButton = document.getElementById("copy");
+      var message = document.getElementById("message");
+
+      var CHARSETS = {
+        uppercase: "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        lowercase: "abcdefghijklmnopqrstuvwxyz",
+        numbers: "0123456789",
+        symbols: "!@#$%^&*()-_=+[]{}|;:,.<>/?`~'\"\\"
+      };
+
+      function buildAlphabet() {
+        var alphabet = "";
+
+        if (uppercase.checked) {
+          alphabet += CHARSETS.uppercase;
+        }
+        if (lowercase.checked) {
+          alphabet += CHARSETS.lowercase;
+        }
+        if (numbers.checked) {
+          alphabet += CHARSETS.numbers;
+        }
+        if (symbols.checked) {
+          alphabet += CHARSETS.symbols;
+        }
+
+        return alphabet;
+      }
+
+      function setAlphabetFromOptions() {
+        alphabetInput.value = buildAlphabet();
+        return alphabetInput.value;
+      }
+
+      function sanitizeLength(value) {
+        var parsed = parseInt(value, 10);
+
+        if (isNaN(parsed) || parsed < 1) {
+          return 1;
+        }
+
+        return parsed;
+      }
+
+      function syncLengthControls(source) {
+        var length = sanitizeLength(lengthInput.value);
+
+        if (source === "slider") {
+          length = sanitizeLength(lengthSlider.value);
+          lengthInput.value = length;
+        } else {
+          lengthInput.value = length;
+        }
+
+        lengthSlider.value = String(Math.min(length, Number(lengthSlider.max)));
+        return length;
+      }
+
+      function generatePassword(length, alphabet) {
+        if (!alphabet) {
+          return "";
+        }
+
+        var password = "";
+
+        for (var i = 0; i < length; i += 1) {
+          var index = Math.floor(Math.random() * alphabet.length);
+          password += alphabet.charAt(index);
+        }
+
+        return password;
+      }
+
+      function updatePassword(useSelectedAlphabet) {
+        var alphabet = useSelectedAlphabet ? setAlphabetFromOptions() : alphabetInput.value;
+        var length = syncLengthControls();
+
+        if (!alphabet) {
+          passwordInput.value = "";
+          message.textContent = "Enter at least one character in the alphabet.";
+          return;
+        }
+
+        passwordInput.value = generatePassword(length, alphabet);
+        message.textContent = "";
+      }
+
+      function onAnyChange(event) {
+        if (event && event.target === lengthSlider) {
+          syncLengthControls("slider");
+        }
+
+        updatePassword(false);
+      }
+
+      function onOptionChange() {
+        updatePassword(true);
+      }
+
+      [uppercase, lowercase, numbers, symbols].forEach(function (element) {
+        element.addEventListener("input", onOptionChange);
+        element.addEventListener("change", onOptionChange);
+      });
+
+      [lengthSlider, lengthInput, alphabetInput].forEach(function (element) {
+        element.addEventListener("input", onAnyChange);
+        element.addEventListener("change", onAnyChange);
+      });
+
+      regenerateButton.addEventListener("click", function () {
+        updatePassword(false);
+      });
+      copyButton.addEventListener("click", function () {
+        if (!passwordInput.value) {
+          message.textContent = "Nothing to copy yet.";
+          return;
+        }
+
+        navigator.clipboard.writeText(passwordInput.value).then(function () {
+          message.textContent = "Password copied to clipboard.";
+        }, function () {
+          message.textContent = "Clipboard copy failed.";
+        });
+      });
+
+      updatePassword(true);
+    }());
+  </script>
+</body>
+</html>
