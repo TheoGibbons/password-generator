@@ -104,6 +104,18 @@
     #alphabet {
       opacity: 0.5;
     }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
   </style>
 </head>
 <body>
@@ -129,6 +141,7 @@
         <label for="lengthSlider">Password length</label>
         <div class="length-row">
           <input id="lengthSlider" type="range" min="1" max="50" value="16">
+          <label for="lengthInput" class="sr-only">Length</label>
           <input id="lengthInput" type="number" min="1" value="16" inputmode="numeric">
         </div>
       </div>
@@ -167,6 +180,7 @@
         numbers: "0123456789",
         symbols: "!@#$%^&*()-_=+[]{}|;:,.<>/?`~'\"\\"
       };
+      var STORAGE_KEY = "passwordGeneratorSettings";
 
       function buildAlphabet() {
         var alphabet = "";
@@ -216,6 +230,65 @@
         return length;
       }
 
+      function saveSettings() {
+        var settings = {
+          uppercase: uppercase.checked,
+          lowercase: lowercase.checked,
+          numbers: numbers.checked,
+          symbols: symbols.checked,
+          alphabet: alphabetInput.value,
+          length: syncLengthControls()
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+      }
+
+      function loadSettings() {
+        var rawSettings = localStorage.getItem(STORAGE_KEY);
+        var settings;
+
+        if (!rawSettings) {
+          return false;
+        }
+
+        try {
+          settings = JSON.parse(rawSettings);
+        } catch (error) {
+          if (error instanceof SyntaxError) {
+            localStorage.removeItem(STORAGE_KEY);
+            return false;
+          }
+
+          throw error;
+        }
+
+        if (!settings || typeof settings !== "object") {
+          return false;
+        }
+
+        if (typeof settings.uppercase === "boolean") {
+          uppercase.checked = settings.uppercase;
+        }
+        if (typeof settings.lowercase === "boolean") {
+          lowercase.checked = settings.lowercase;
+        }
+        if (typeof settings.numbers === "boolean") {
+          numbers.checked = settings.numbers;
+        }
+        if (typeof settings.symbols === "boolean") {
+          symbols.checked = settings.symbols;
+        }
+        if (typeof settings.alphabet === "string") {
+          alphabetInput.value = settings.alphabet;
+        }
+        if (typeof settings.length !== "undefined") {
+          lengthInput.value = sanitizeLength(settings.length);
+          syncLengthControls();
+        }
+
+        return true;
+      }
+
       function generatePassword(length, alphabet) {
         if (!alphabet) {
           return "";
@@ -251,10 +324,12 @@
         }
 
         updatePassword(false);
+        saveSettings();
       }
 
       function onOptionChange() {
         updatePassword(true);
+        saveSettings();
       }
 
       [uppercase, lowercase, numbers, symbols].forEach(function (element) {
@@ -283,7 +358,12 @@
         });
       });
 
-      updatePassword(true);
+      if (!loadSettings()) {
+        setAlphabetFromOptions();
+      }
+
+      updatePassword(false);
+      saveSettings();
     }());
   </script>
 </body>

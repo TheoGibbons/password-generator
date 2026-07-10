@@ -12,6 +12,7 @@ https://github.com/TheoGibbons/password-generator
 
 - Uppercase, lowercase, number, and symbol checkboxes
 - Editable alphabet field
+- Password length, selected character sets, and alphabet are saved in local storage
 - Random password output that regenerates whenever inputs change
 - Regenerate button
 - Copy to clipboard button
